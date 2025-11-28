@@ -80,13 +80,15 @@
         
         import React, { useState, useEffect, useRef } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { GoogleGenAI } from "@google/genai";
+        // Plus besoin de GoogleGenAI - on utilise Cloudflare Worker maintenant
+        // import { GoogleGenAI } from "@google/genai";
 
         // ==========================================
         // CONFIGURATION & DONNÉES
         // ==========================================
         
-        const CLE_UNIVERSELLE = "AIzaSyDIC6gK7RCR0o4gR0B1cPl0EYIeE5QvKCs"; 
+        // Clé API maintenant sécurisée dans Cloudflare Worker
+        const WORKER_URL = "https://bibliotheque-spirite-api.laurent91210.workers.dev/"; 
 
         const LIBRARY = [
             // CODIFICATION (KARDEC)
@@ -113,13 +115,9 @@
         const AppView = { HOME: 'HOME', EXPLORER: 'EXPLORER', CHAT: 'CHAT' };
         
         // ==========================================
-        // SERVICE IA
+        // SERVICE IA - Maintenant via Cloudflare Worker
         // ==========================================
-        const getAiClient = () => {
-            const apiKey = CLE_UNIVERSELLE || localStorage.getItem('GEMINI_API_KEY');
-            if (!apiKey) throw new Error("Clé API manquante");
-            return new GoogleGenAI({ apiKey });
-        };
+        // Plus besoin de getAiClient - tout passe par le Worker
 
         const cache = {};
 
@@ -128,24 +126,28 @@
             const cacheKey = `structure-${book.id}`;
             if (cache[cacheKey]) return cache[cacheKey];
 
-            const ai = getAiClient();
-            
             // Ajustement du prompt pour inclure les années 1870-1876 pour la Revue
             let prompt = `Génère la liste COMPLETE de tous les chapitres du livre "${book.title}" de ${book.author}. Sois exhaustif.`;
-            
+
             if (book.title.includes("Revue Spirite")) {
                 prompt = `Génère la liste des Années de la Revue Spirite, de 1858 jusqu'à 1876 inclus. Format JSON attendu: { "chapters": [{ "id": "1858", "title": "Année 1858" }, { "id": "1876", "title": "Année 1876" }] }`;
             } else {
                 prompt += ` Format JSON: { "chapters": [{ "id": "1", "title": "Titre du chapitre" }] }`;
             }
-            
+
             try {
-                const response = await ai.models.generateContent({
-                    model: "gemini-1.5-flash",
-                    contents: prompt,
-                    config: { responseMimeType: "application/json" }
+                const response = await fetch(WORKER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: "gemini-1.5-flash",
+                        contents: prompt,
+                        config: { responseMimeType: "application/json" }
+                    })
                 });
-                const data = JSON.parse(response.text);
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(result);
+                const data = JSON.parse(text);
                 const res = data.chapters || [];
                 cache[cacheKey] = res;
                 return res;
@@ -160,8 +162,6 @@
             const cacheKey = `content-${book.id}-${chapterTitle}`;
             if (cache[cacheKey]) return cache[cacheKey];
 
-            const ai = getAiClient();
-            
             // Prompt adaptatif selon le style de l'auteur
             let promptInstruction = "Restitue le contenu détaillé du chapitre. Sois exhaustif.";
             if (book.title.includes("Esprits")) {
@@ -186,12 +186,18 @@
             Important: Utilise des sauts de ligne (\\n) pour aérer le texte et respecter les paragraphes originaux.`;
 
             try {
-                const response = await ai.models.generateContent({
-                    model: "gemini-1.5-flash",
-                    contents: prompt,
-                    config: { responseMimeType: "application/json" }
+                const response = await fetch(WORKER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: "gemini-1.5-flash",
+                        contents: prompt,
+                        config: { responseMimeType: "application/json" }
+                    })
                 });
-                const data = JSON.parse(response.text);
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(result);
+                const data = JSON.parse(text);
                 cache[cacheKey] = data.items || [];
                 return data.items || [];
             } catch (e) {
@@ -202,8 +208,6 @@
 
         // Chat avec le contexte du livre
         const chatWithBook = async (book, history, message) => {
-            const ai = getAiClient();
-            
             let personality = `Tu es un expert du livre "${book.title}".`;
             if (book.author === "Chico Xavier" || book.author === "Yvonne Pereira") personality = "Tu es un esprit bienveillant racontant son expérience dans l'au-delà. Tu parles avec émotion et charité.";
             if (book.author === "Léon Denis") personality = "Tu empruntes le style éloquent, poétique et philosophique de Léon Denis.";
@@ -213,14 +217,46 @@
             if (book.author === "Arthur Conan Doyle") personality = "Tu es Sir Arthur Conan Doyle. Tu es un conteur né, curieux et passionné par les faits historiques du spiritisme.";
             if (book.author === "Gustave Geley") personality = "Tu es le Dr Gustave Geley. Tu as une approche clinique, biologique et rationnelle des phénomènes.";
 
-            const chat = ai.chats.create({
-                model: "gemini-2.5-flash",
-                history: history,
-                config: {
-                    systemInstruction: `${personality} Réponds aux questions en te basant UNIQUEMENT sur le contenu et l'esprit de "${book.title}" (ou la vie de ${book.author}). Si la question n'est pas dans le livre, dis-le poliment.`
-                }
+            const systemInstruction = `${personality} Réponds aux questions en te basant UNIQUEMENT sur le contenu et l'esprit de "${book.title}" (ou la vie de ${book.author}). Si la question n'est pas dans le livre, dis-le poliment.`;
+
+            const response = await fetch(WORKER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: "gemini-1.5-flash",
+                    history,
+                    message,
+                    systemInstruction
+                })
             });
-            return await chat.sendMessageStream({ message });
+
+            // Parser le streaming SSE
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            return {
+                async *[Symbol.asyncIterator]() {
+                    let buffer = '';
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+                                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                                    if (text) yield { text };
+                                } catch (e) { /* Ignorer les erreurs de parsing */ }
+                            }
+                        }
+                    }
+                }
+            };
         };
 
         // ==========================================

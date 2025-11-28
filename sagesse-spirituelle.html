@@ -67,9 +67,11 @@
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect, useRef } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { GoogleGenerativeAI } from "@google/generative-ai";
+        // Plus besoin de GoogleGenerativeAI - on utilise Cloudflare Worker
+        // import { GoogleGenerativeAI } from "@google/generative-ai";
 
-        const CLE_UNIVERSELLE = "AIzaSyDIC6gK7RCR0o4gR0B1cPl0EYIeE5QvKCs"; 
+        // Clé API maintenant sécurisée dans Cloudflare Worker
+        const WORKER_URL = "https://bibliotheque-spirite-api.laurent91210.workers.dev/"; 
 
         const TEACHERS = [
             {
@@ -119,23 +121,50 @@
             }
         ];
 
-        const getAiClient = () => {
-            const apiKey = CLE_UNIVERSELLE || localStorage.getItem('GEMINI_API_KEY');
-            if (!apiKey) throw new Error("Clé API manquante");
-            return new GoogleGenerativeAI(apiKey);
-        };
+        // Plus besoin de getAiClient - tout passe par le Worker Cloudflare
 
         const chatWithTeacher = async (teacher, history, message) => {
-            const ai = getAiClient();
             const booksContext = teacher.books.join(', ');
-            
-            const model = ai.getGenerativeModel({ 
-                model: "gemini-1.5-flash",
-                systemInstruction: `${teacher.personality}\n\nTu as une connaissance COMPLETE de tous les livres suivants : ${booksContext}.\n\nRéponds en te basant sur l'ENSEMBLE de ces enseignements. Si la question sort du cadre de ces enseignements, dis-le avec bienveillance et ramène vers les thèmes centraux.`
+            const systemInstruction = `${teacher.personality}\n\nTu as une connaissance COMPLETE de tous les livres suivants : ${booksContext}.\n\nRéponds en te basant sur l'ENSEMBLE de ces enseignements. Si la question sort du cadre de ces enseignements, dis-le avec bienveillance et ramène vers les thèmes centraux.`;
+
+            const response = await fetch(WORKER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: "gemini-1.5-flash",
+                    history,
+                    message,
+                    systemInstruction
+                })
             });
-            
-            const chat = model.startChat({ history: history });
-            return await chat.sendMessageStream(message);
+
+            // Parser le streaming SSE
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            return {
+                async *[Symbol.asyncIterator]() {
+                    let buffer = '';
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+                                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                                    if (text) yield { text };
+                                } catch (e) { /* Ignorer les erreurs de parsing */ }
+                            }
+                        }
+                    }
+                }
+            };
         };
 
         const WelcomeModal = ({ onClose }) => {

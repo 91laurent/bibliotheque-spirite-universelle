@@ -97,9 +97,9 @@
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect, useRef } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { GoogleGenerativeAI } from "@google/generative-ai";
+        // import { GoogleGenerativeAI } from "@google/generative-ai";
 
-        const CLE_UNIVERSELLE = "AIzaSyDIC6gK7RCR0o4gR0B1cPl0EYIeE5QvKCs"; 
+        const WORKER_URL = "https://bibliotheque-spirite-api.laurent91210.workers.dev/"; 
 
         const MASTERS = [
             {
@@ -235,24 +235,54 @@
             { icon: '🚫', title: 'Philosophie Radicale', description: 'Efficacité par le Non-Agir et remise en cause des dogmes' }
         ];
 
-        const getAiClient = () => {
-            const apiKey = CLE_UNIVERSELLE || localStorage.getItem('GEMINI_API_KEY');
-            if (!apiKey) throw new Error("Clé API manquante");
-            return new GoogleGenerativeAI(apiKey);
-        };
-
         const chatWithMaster = async (master, history, message) => {
-            const ai = getAiClient();
             const booksContext = master.books.join(', ');
             const piliersContext = master.piliers.join(', ');
-            
-            const model = ai.getGenerativeModel({
-                model: "gemini-1.5-flash",
-                systemInstruction: `${master.personality}\n\nTu maîtrises parfaitement les ouvrages suivants : ${booksContext}.\nTu es expert des piliers : ${piliersContext}.\n\nRéponds en te basant sur tes travaux et ton expérience. Sois pédagogue, concret et n'hésite pas à donner des exemples précis ou des anecdotes de recherche. Si la question sort de ton domaine, oriente vers un autre maître (Mancuso pour la biologie, Bourguignon pour le sol, Fukuoka pour le non-agir, etc.).`
+
+            const systemInstruction = `${master.personality}\n\nTu maîtrises parfaitement les ouvrages suivants : ${booksContext}.\nTu es expert des piliers : ${piliersContext}.\n\nRéponds en te basant sur tes travaux et ton expérience. Sois pédagogue, concret et n'hésite pas à donner des exemples précis ou des anecdotes de recherche. Si la question sort de ton domaine, oriente vers un autre maître (Mancuso pour la biologie, Bourguignon pour le sol, Fukuoka pour le non-agir, etc.).`;
+
+            const response = await fetch(WORKER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: "gemini-1.5-flash",
+                    history,
+                    message,
+                    systemInstruction
+                })
             });
-            
-            const chat = model.startChat({ history: history });
-            return await chat.sendMessageStream(message);
+
+            // Parser le streaming SSE
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            return {
+                stream: {
+                    async *[Symbol.asyncIterator]() {
+                        let buffer = '';
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || '';
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    try {
+                                        const data = JSON.parse(line.slice(6));
+                                        const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                                        if (textContent) {
+                                            yield {
+                                                text: () => textContent
+                                            };
+                                        }
+                                    } catch (e) { /* Ignorer les erreurs de parsing */ }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
         };
 
         const WelcomeModal = ({ onClose }) => {
@@ -468,31 +498,7 @@
         const App = () => {
             const [selectedMaster, setSelectedMaster] = useState(null);
             const [showWelcome, setShowWelcome] = useState(true);
-            const [apiKey, setApiKey] = useState(localStorage.getItem('GEMINI_API_KEY'));
             const [filterPilier, setFilterPilier] = useState('Tous');
-
-            const handleSaveKey = () => {
-                const key = prompt("Entrez votre clé API Google Gemini :");
-                if (key) {
-                    localStorage.setItem('GEMINI_API_KEY', key);
-                    setApiKey(key);
-                }
-            };
-
-            if (!CLE_UNIVERSELLE && !apiKey) {
-                return (
-                    <div className="flex flex-col items-center justify-center min-h-screen p-4">
-                        <div className="bg-white p-10 rounded-3xl shadow-2xl max-w-md w-full text-center">
-                            <h1 className="text-4xl font-serif font-bold text-emerald-900 mb-4">🌱 Bienvenue</h1>
-                            <p className="text-gray-600 mb-6 text-lg">Pour accéder aux Maîtres du Végétal, une clé API Google Gemini (gratuite) est nécessaire.</p>
-                            <button onClick={handleSaveKey} className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold text-lg hover:from-emerald-700 hover:to-teal-700 transition shadow-lg">
-                                Entrer ma Clé API
-                            </button>
-                            <p className="text-xs text-gray-400 mt-4">Stockée uniquement sur votre appareil</p>
-                        </div>
-                    </div>
-                );
-            }
 
             if (selectedMaster) {
                 return <ChatInterface master={selectedMaster} onBack={() => setSelectedMaster(null)} />;
@@ -592,11 +598,6 @@
                     <footer className="text-center mt-16 text-white/70 text-sm">
                         <p className="mb-2">© 2025 - Les Maîtres du Végétal - Révolution Verte · Propulsé par Google Gemini AI</p>
                         <p className="text-xs italic">Une bibliothèque vivante pour repenser notre rapport au végétal</p>
-                        {!CLE_UNIVERSELLE && (
-                            <button onClick={handleSaveKey} className="text-xs mt-3 underline hover:text-white">
-                                Changer la Clé API
-                            </button>
-                        )}
                     </footer>
                 </div>
             );
