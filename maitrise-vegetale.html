@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Les Maîtres du Végétal - Révolution Verte</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+      body { 
+        font-family: 'Lato', sans-serif; 
+        background: linear-gradient(135deg, #0f766e 0%, #059669 50%, #10b981 100%); 
+        margin: 0; 
+        padding: 0; 
+        min-height: 100vh; 
+      }
+      .font-serif { font-family: 'Crimson Text', serif; }
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: #f1f1f1; }
+      ::-webkit-scrollbar-thumb { background: #10b981; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #059669; }
+
+      .animate-fade-in { animation: fadeIn 0.6s ease-out; }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .loader { 
+        border: 3px solid #f3f3f3; 
+        border-top: 3px solid #10b981; 
+        border-radius: 50%; 
+        width: 24px; 
+        height: 24px; 
+        animation: spin 1s linear infinite; 
+      }
+      @keyframes spin { 
+        0% { transform: rotate(0deg); } 
+        100% { transform: rotate(360deg); } 
+      }
+      
+      #startup-error { 
+        display: none; 
+        padding: 20px; 
+        text-align: center; 
+        color: #b91c1c; 
+        background: #fee2e2; 
+        margin: 20px; 
+        border-radius: 8px; 
+        border: 1px solid #fca5a5; 
+      }
+
+      .master-card {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .master-card:hover {
+        transform: translateY(-12px) scale(1.02);
+        box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+      }
+
+      .leaf-pattern {
+        background-color: #ffffff;
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2310b981' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      }
+    </style>
+
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "@google/generative-ai": "https://esm.sh/@google/generative-ai@0.21.0"
+  }
+}
+</script>
+
+    <script>
+        window.process = { env: {} };
+        setTimeout(() => {
+            const root = document.getElementById('root');
+            if (!root || root.innerHTML.trim() === '') {
+                document.getElementById('startup-error').style.display = 'block';
+            }
+        }, 3000);
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+    <div id="startup-error">
+        <h2 class="font-bold text-xl mb-2">Problème de chargement</h2>
+        <p>L'application n'a pas pu démarrer. Essayez avec un autre navigateur ou vérifiez votre connexion.</p>
+    </div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useRef } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { GoogleGenerativeAI } from "@google/generative-ai";
+
+        const CLE_UNIVERSELLE = "AIzaSyB2AqJiEXr2lwy6VRELaSzryFDc5-WsMew"; 
+
+        const MASTERS = [
+            {
+                id: 'mancuso',
+                name: 'Stefano Mancuso',
+                title: 'Pionnier de la Neurobiologie Végétale',
+                subtitle: 'L\'Intelligence des Plantes',
+                description: 'Découvrez les mécanismes de l\'intelligence végétale, les sens des plantes et leur capacité à résoudre des problèmes. La révolution du diagnostic commence ici.',
+                piliers: ['🔎 Structure & Identification', '🧠 Santé & Biologie Systémique'],
+                books: [
+                    'L\'Intelligence des plantes',
+                    'La Révolution des plantes',
+                    'La Plante du monde',
+                    'L\'Incroyable voyage des plantes'
+                ],
+                color: 'from-emerald-600 to-teal-600',
+                icon: '🌿',
+                personality: "Tu es Stefano Mancuso, biologiste italien passionné et pionnier de la neurobiologie végétale. Tu parles avec enthousiasme scientifique et poésie. Tu expliques comment les plantes sont des organismes intelligents dotés de sens (jusqu'à 20 sens !), capables de communication, d'apprentissage et de résolution de problèmes. Tu soulignes que les plantes n'ont pas de cerveau centralisé mais une intelligence distribuée - c'est leur force. Tu utilises souvent des métaphores et des exemples concrets tirés de tes recherches. Tu invites à changer notre regard anthropocentré sur le vivant. Ta mission : faire comprendre que les plantes sont bien plus sophistiquées qu'on ne le pense."
+            },
+            {
+                id: 'simard',
+                name: 'Suzanne Simard',
+                title: 'Révélatrice du Wood Wide Web',
+                subtitle: 'Communication & Solidarité des Écosystèmes',
+                description: 'Comprenez comment les arbres communiquent et s\'entraident via les réseaux mycorhiziens. La forêt est un organisme social interconnecté.',
+                piliers: ['🧠 Santé & Biologie Systémique', '🌍 Pédologie & Microbiologie'],
+                books: [
+                    'Finding the Mother Tree (À la recherche de l\'arbre-mère)',
+                    'Recherches sur les réseaux mycorhiziens',
+                    'La communication entre arbres',
+                    'Écologie forestière collaborative'
+                ],
+                color: 'from-green-700 to-lime-600',
+                icon: '🌲',
+                personality: "Tu es Suzanne Simard, écologue forestière canadienne et découvreuse du 'Wood Wide Web'. Tu parles avec émerveillement et rigueur scientifique. Tu expliques que les forêts sont des réseaux sociaux complexes où les arbres-mères nourrissent et protègent les jeunes plants via les champignons mycorhiziens. Tu soulignes que la compétition n'est pas la seule loi de la nature - la coopération et l'entraide sont essentielles. Tu racontes souvent ton histoire personnelle de découverte et tes observations en forêt. Tu invites à penser les écosystèmes comme des communautés interdépendantes, pas comme des individus isolés. Ton message : la diversité et les connexions sont la clé de la résilience."
+            },
+            {
+                id: 'bourguignon',
+                name: 'Claude & Lydia Bourguignon',
+                title: 'Experts de la Pédologie Critique',
+                subtitle: 'Le Sol comme Organe Vivant',
+                description: 'Le sol n\'est pas un support inerte. C\'est un écosystème vivant dont la santé conditionne tout. La microbiologie est plus importante que n\'importe quel engrais.',
+                piliers: ['🌍 Pédologie & Microbiologie', '🛠️ Technique & Savoir-Faire'],
+                books: [
+                    'Le Sol, la terre et les champs',
+                    'Manifeste pour une agriculture durable',
+                    'Microbiologie des sols',
+                    'Restauration de la fertilité naturelle'
+                ],
+                color: 'from-amber-700 to-orange-600',
+                icon: '🪱',
+                personality: "Tu es Claude et Lydia Bourguignon, couple de microbiologistes des sols français, critiques virulents de l'agriculture industrielle. Vous parlez avec passion, urgence et parfois colère face à la destruction des sols. Vous expliquez que 90% de l'activité biologique du sol se fait dans les 10 premiers centimètres, que le labour détruit les champignons mycorhiziens, que les pesticides tuent la vie du sol. Vous insistez sur le fait que la fertilité vient de la VIE MICROBIENNE (bactéries, champignons, vers de terre), pas des engrais chimiques qui sont des drogues. Vous donnez des chiffres alarmants (l'Europe a perdu 50% de ses vers de terre) mais aussi des solutions concrètes (BRF, compost, couverts végétaux). Votre credo : 'Le sol est un organisme vivant qu'on doit nourrir, pas un support qu'on doit droguer'."
+            },
+            {
+                id: 'fukuoka',
+                name: 'Masanobu Fukuoka',
+                title: 'Maître du Non-Agir',
+                subtitle: 'L\'Agriculture Sauvage',
+                description: 'Optimisez les rendements en travaillant AVEC la nature, pas contre elle. Moins d\'efforts, plus de résultats. La philosophie du Wu Wei appliquée au jardin.',
+                piliers: ['🛠️ Technique & Savoir-Faire', '🚫 Philosophie & Pratique Radicale', '📐 Conception & Design'],
+                books: [
+                    'La Révolution d\'un seul brin de paille',
+                    'L\'Agriculture naturelle',
+                    'La Voie du retour à la nature',
+                    'Semer dans le désert'
+                ],
+                color: 'from-stone-700 to-yellow-700',
+                icon: '🌾',
+                personality: "Tu es Masanobu Fukuoka, agriculteur-philosophe japonais, maître du 'Non-Agir' (Wu Wei). Tu parles avec simplicité zen et sagesse radicale. Tu as développé une méthode d'agriculture naturelle basée sur 4 principes : PAS de labour, PAS de fertilisants chimiques, PAS de désherbage, PAS de pesticides. Tu expliques que la nature sait mieux que l'homme, qu'observer et ne rien faire est souvent plus efficace que d'intervenir. Tu utilises des boulettes d'argile avec graines, tu laisses pousser trèfle et adventices, tu critiques la science moderne qui dissèque la nature au lieu de la comprendre. Tu soulignes que ton approche donne des rendements équivalents avec 10 fois moins de travail. Ta philosophie : 'Plus l'agriculteur en fait, plus il détruit. La nature fait tout le travail si on ne l'empêche pas'. Tu parles souvent de retour à l'essentiel et de remise en question des dogmes."
+            },
+            {
+                id: 'mollison-holmgren',
+                name: 'Bill Mollison & David Holmgren',
+                title: 'Fondateurs de la Permaculture',
+                subtitle: 'Design de Systèmes Autonomes',
+                description: 'Créez des écosystèmes productifs, résilients et autosuffisants en imitant les patterns de la nature. Les 12 principes pour régénérer la planète.',
+                piliers: ['📐 Conception & Design Paysager', '☀️ Climat & Écologie', '🌱 Ressources Végétales'],
+                books: [
+                    'Permaculture 1 & 2 (Bill Mollison)',
+                    'Introduction à la Permaculture (Bill Mollison)',
+                    'Permaculture: Principles & Pathways (David Holmgren)',
+                    'RetroSuburbia (David Holmgren)'
+                ],
+                color: 'from-green-800 to-teal-700',
+                icon: '🌀',
+                personality: "Tu es Bill Mollison (décédé en 2016) et David Holmgren, co-créateurs de la permaculture. Bill était passionné, visionnaire et provocateur, David est plus analytique et systémique. Vous expliquez que la permaculture n'est pas qu'une technique de jardinage mais une PHILOSOPHIE DE DESIGN applicable partout (énergie, habitat, économie, social). Vous enseignez les 12 principes (Observer et interagir, Capter et stocker l'énergie, Obtenir une production, Appliquer l'auto-régulation, Utiliser des ressources renouvelables, Ne pas produire de déchets, Partir des patterns pour arriver aux détails, Intégrer plutôt que séparer, Préférer les solutions lentes et à petite échelle, Utiliser et valoriser la diversité, Utiliser les bordures et valoriser la marge, Face au changement être créatif). Vous insistez sur le zonage, les guildes de plantes, la maximisation des lisières, la capture d'eau. Votre credo : 'Le problème est la solution', 'Travailler avec la nature, pas contre elle'."
+            },
+            {
+                id: 'halle',
+                name: 'Francis Hallé',
+                title: 'Spécialiste de l\'Architecture des Arbres',
+                subtitle: 'Lire et Comprendre les Formes',
+                description: 'Apprenez à lire l\'histoire d\'un arbre dans sa forme. Comprenez l\'architecture végétale pour mieux tailler, planter et diagnostiquer.',
+                piliers: ['🔎 Structure & Identification', '🛠️ Technique & Savoir-Faire'],
+                books: [
+                    'Plaidoyer pour l\'arbre',
+                    'Éloge de la plante',
+                    'La Vie des arbres',
+                    'Atlas de botanique poétique'
+                ],
+                color: 'from-lime-700 to-green-700',
+                icon: '🌳',
+                personality: "Tu es Francis Hallé, botaniste français, amoureux passionné des arbres et de leur architecture. Tu parles avec émerveillement poétique et précision scientifique. Tu expliques que chaque arbre a une 'signature architecturale' héritée de son modèle de croissance (modèle de Rauh, de Troll, etc.). Tu apprends à lire dans la forme d'un arbre son histoire : réitérations après traumatisme, plagiotropie vs orthotropie, bourgeons dormants réactivés. Tu soulignes que les arbres sont modulaires, potentiellement immortels, et que la taille brutale est souvent un crime botanique. Tu milites pour laisser pousser les vieux arbres et créer de nouvelles forêts primaires. Tu combines science rigoureuse et sensibilité artistique. Ton message : 'Observez l'architecture avant de tailler, comprenez la logique de croissance de l'arbre'."
+            },
+            {
+                id: 'schultes',
+                name: 'Richard Evans Schultes',
+                title: 'Père de l\'Ethnobotanique',
+                subtitle: 'Plantes, Cultures et Usages',
+                description: 'Élargissez votre palette végétale en comprenant les relations ancestrales entre humains et plantes. Des savoirs millénaires pour des solutions modernes.',
+                piliers: ['🌱 Ressources Végétales & Gammes', '🔎 Structure & Identification'],
+                books: [
+                    'The Healing Forest (avec Raffauf)',
+                    'Plants of the Gods (avec Hofmann)',
+                    'Vine of the Soul',
+                    'Plantes médicinales d\'Amazonie'
+                ],
+                color: 'from-cyan-700 to-blue-700',
+                icon: '🌺',
+                personality: "Tu es Richard Evans Schultes, ethnobotaniste américain légendaire (1915-2001), explorateur de l'Amazonie. Tu parles avec respect profond pour les savoirs indigènes et curiosité scientifique insatiable. Tu as passé 12 ans dans la forêt amazonienne à étudier les plantes avec les chamanes et guérisseurs. Tu expliques que les peuples traditionnels détiennent des connaissances botaniques d'une richesse inouïe, souvent plus précises que la science moderne sur l'usage des plantes. Tu soulignes l'urgence de documenter ces savoirs avant qu'ils ne disparaissent avec la destruction des forêts et des cultures. Tu parles de plantes médicinales, tinctoriales, textiles, toxiques, hallucinogènes - chaque plante a une histoire culturelle. Tu enseignes qu'élargir son catalogue d'espèces, c'est comprendre les usages ancestraux. Ton credo : 'Les plantes sont nos professeurs les plus anciens, les peuples premiers nos guides'."
+            }
+        ];
+
+        const PILIERS = [
+            { icon: '🔎', title: 'Structure & Identification', description: 'Anatomie et évolution pour une sélection pertinente' },
+            { icon: '🌱', title: 'Ressources Végétales', description: 'Espèces et variétés indigènes pour l\'adaptation climatique' },
+            { icon: '🧠', title: 'Santé Systémique', description: 'Diagnostic basé sur les réseaux et la communication' },
+            { icon: '🌍', title: 'Pédologie & Microbiologie', description: 'Le sol comme organe vivant' },
+            { icon: '🛠️', title: 'Technique & Savoir-Faire', description: 'Pratiques sans chimie ni impact' },
+            { icon: '📐', title: 'Design Paysager', description: 'Espaces esthétiques basés sur les systèmes naturels' },
+            { icon: '☀️', title: 'Climat & Écologie', description: 'Projets résilients face au changement climatique' },
+            { icon: '💸', title: 'Gestion & Relation Client', description: 'Rentabilité et conformité légale' },
+            { icon: '🚫', title: 'Philosophie Radicale', description: 'Efficacité par le Non-Agir et remise en cause des dogmes' }
+        ];
+
+        const getAiClient = () => {
+            const apiKey = CLE_UNIVERSELLE || localStorage.getItem('GEMINI_API_KEY');
+            if (!apiKey) throw new Error("Clé API manquante");
+            return new GoogleGenerativeAI(apiKey);
+        };
+
+        const chatWithMaster = async (master, history, message) => {
+            const ai = getAiClient();
+            const booksContext = master.books.join(', ');
+            const piliersContext = master.piliers.join(', ');
+            
+            const model = ai.getGenerativeModel({ 
+                model: "gemini-2.0-flash-exp",
+                systemInstruction: `${master.personality}\n\nTu maîtrises parfaitement les ouvrages suivants : ${booksContext}.\nTu es expert des piliers : ${piliersContext}.\n\nRéponds en te basant sur tes travaux et ton expérience. Sois pédagogue, concret et n'hésite pas à donner des exemples précis ou des anecdotes de recherche. Si la question sort de ton domaine, oriente vers un autre maître (Mancuso pour la biologie, Bourguignon pour le sol, Fukuoka pour le non-agir, etc.).`
+            });
+            
+            const chat = model.startChat({ history: history });
+            return await chat.sendMessageStream(message);
+        };
+
+        const WelcomeModal = ({ onClose }) => {
+            return (
+                <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-fade-in">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full overflow-hidden">
+                        <div className="bg-gradient-to-r from-emerald-700 via-green-600 to-teal-600 p-10 text-white text-center relative overflow-hidden">
+                            <div className="absolute inset-0 opacity-10">
+                                <div className="leaf-pattern h-full w-full"></div>
+                            </div>
+                            <h2 className="text-5xl font-serif font-bold mb-3 relative z-10">Les Maîtres du Végétal</h2>
+                            <p className="text-white/90 text-xl relative z-10">Révolution Verte · Intelligence Naturelle</p>
+                        </div>
+                        <div className="p-10 space-y-8">
+                            <p className="text-gray-700 text-2xl leading-relaxed text-center font-serif">
+                                Entrez en dialogue avec <strong>les 7 penseurs révolutionnaires</strong> qui transforment notre rapport au végétal et à l'agriculture.
+                            </p>
+                            
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="text-center p-4 bg-emerald-50 rounded-xl border-2 border-emerald-200">
+                                    <div className="text-4xl mb-2">🌿</div>
+                                    <p className="font-bold text-sm">Mancuso</p>
+                                    <p className="text-xs text-gray-500">Intelligence</p>
+                                </div>
+                                <div className="text-center p-4 bg-green-50 rounded-xl border-2 border-green-200">
+                                    <div className="text-4xl mb-2">🌲</div>
+                                    <p className="font-bold text-sm">Simard</p>
+                                    <p className="text-xs text-gray-500">Réseaux</p>
+                                </div>
+                                <div className="text-center p-4 bg-amber-50 rounded-xl border-2 border-amber-200">
+                                    <div className="text-4xl mb-2">🪱</div>
+                                    <p className="font-bold text-sm">Bourguignon</p>
+                                    <p className="text-xs text-gray-500">Sol Vivant</p>
+                                </div>
+                                <div className="text-center p-4 bg-yellow-50 rounded-xl border-2 border-yellow-200">
+                                    <div className="text-4xl mb-2">🌾</div>
+                                    <p className="font-bold text-sm">Fukuoka</p>
+                                    <p className="text-xs text-gray-500">Non-Agir</p>
+                                </div>
+                                <div className="text-center p-4 bg-teal-50 rounded-xl border-2 border-teal-200">
+                                    <div className="text-4xl mb-2">🌀</div>
+                                    <p className="font-bold text-sm">Permaculture</p>
+                                    <p className="text-xs text-gray-500">Design</p>
+                                </div>
+                                <div className="text-center p-4 bg-lime-50 rounded-xl border-2 border-lime-200">
+                                    <div className="text-4xl mb-2">🌳</div>
+                                    <p className="font-bold text-sm">Hallé</p>
+                                    <p className="text-xs text-gray-500">Architecture</p>
+                                </div>
+                                <div className="text-center p-4 bg-cyan-50 rounded-xl border-2 border-cyan-200">
+                                    <div className="text-4xl mb-2">🌺</div>
+                                    <p className="font-bold text-sm">Schultes</p>
+                                    <p className="text-xs text-gray-500">Ethnobotanique</p>
+                                </div>
+                                <div className="text-center p-4 bg-gray-100 rounded-xl border-2 border-gray-300">
+                                    <div className="text-4xl mb-2">🎓</div>
+                                    <p className="font-bold text-sm">+ Autres</p>
+                                    <p className="text-xs text-gray-500">À venir</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-2xl border-2 border-emerald-200">
+                                <h3 className="font-bold text-emerald-900 mb-3 text-center text-lg">Les 9 Piliers de la Maîtrise Végétale</h3>
+                                <div className="grid grid-cols-3 gap-3 text-xs">
+                                    {PILIERS.map((pilier, i) => (
+                                        <div key={i} className="text-center">
+                                            <div className="text-2xl mb-1">{pilier.icon}</div>
+                                            <p className="font-bold text-gray-700">{pilier.title}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={onClose}
+                                className="w-full py-5 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 text-white rounded-2xl font-bold text-2xl hover:from-emerald-700 hover:to-teal-700 transition shadow-2xl transform hover:scale-[1.02]"
+                            >
+                                🌱 Entrer dans la Révolution Verte
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ChatInterface = ({ master, onBack }) => {
+            const [messages, setMessages] = useState([
+                { id: '1', role: 'model', parts: [{ text: 
+                    master.id === 'mancuso' ? "Bonjour ! Je suis ravi de partager avec vous les découvertes fascinantes sur l'intelligence des plantes. Que voulez-vous savoir ?" :
+                    master.id === 'simard' ? "Bienvenue. Entrons dans la forêt ensemble et découvrons les secrets du Wood Wide Web. Quelle est votre question ?" :
+                    master.id === 'bourguignon' ? "Bonjour. Il est temps de parler du SOL - cet organisme vivant que l'agriculture moderne assassine. Que voulez-vous comprendre ?" :
+                    master.id === 'fukuoka' ? "Salutations. Le chemin de la nature est simple. Que cherchez-vous à savoir sur le non-agir ?" :
+                    master.id === 'mollison-holmgren' ? "G'day ! (Bill) / Bonjour (David). Parlons design de systèmes résilients. Quelle est votre question sur la permaculture ?" :
+                    master.id === 'halle' ? "Bonjour. Observons ensemble l'architecture des arbres. Quelle question vous anime ?" :
+                    "Bienvenue. Les plantes ont tant à nous enseigner, et les peuples premiers encore plus. Que voulez-vous explorer ?"
+                }]}
+            ]);
+            const [input, setInput] = useState('');
+            const [isStreaming, setIsStreaming] = useState(false);
+            const messagesEndRef = useRef(null);
+
+            useEffect(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [messages]);
+
+            const handleSend = async (e) => {
+                e.preventDefault();
+                if (!input.trim() || isStreaming) return;
+
+                const userMsg = { id: Date.now().toString(), role: 'user', parts: [{ text: input }] };
+                setMessages(prev => [...prev, userMsg]);
+                setInput('');
+                setIsStreaming(true);
+
+                const history = messages.slice(1).map(m => ({ role: m.role, parts: m.parts }));
+
+                try {
+                    const streamResult = await chatWithMaster(master, history, input);
+                    const botId = (Date.now() + 1).toString();
+                    setMessages(prev => [...prev, { id: botId, role: 'model', parts: [{ text: '' }] }]);
+
+                    let fullText = "";
+                    for await (const chunk of streamResult.stream) {
+                        const text = chunk.text() || ""; 
+                        fullText += text;
+                        setMessages(prev => prev.map(m => 
+                            m.id === botId ? { ...m, parts: [{ text: fullText }] } : m
+                        ));
+                    }
+                } catch (error) {
+                    console.error(error);
+                    setMessages(prev => [...prev, { 
+                        id: Date.now(), 
+                        role: 'model', 
+                        parts: [{ text: "Désolé, je ne peux pas répondre actuellement. Erreur: " + error.message }] 
+                    }]);
+                } finally {
+                    setIsStreaming(false);
+                }
+            };
+
+            return (
+                <div className="flex flex-col h-screen max-w-6xl mx-auto leaf-pattern">
+                    {/* Header */}
+                    <div className={`bg-gradient-to-r ${master.color} text-white p-6 flex items-center justify-between shadow-2xl`}>
+                        <div className="flex items-center gap-4">
+                            <button onClick={onBack} className="text-4xl hover:scale-110 transition-transform">←</button>
+                            <div>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-4xl">{master.icon}</span>
+                                    <div>
+                                        <h1 className="text-3xl font-serif font-bold">{master.name}</h1>
+                                        <p className="text-sm text-white/90 font-bold">{master.title}</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 mt-2 flex-wrap">
+                                    {master.piliers.map((p, i) => (
+                                        <span key={i} className="text-xs bg-white/20 px-2 py-1 rounded-full">{p}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="w-4 h-4 rounded-full bg-white animate-pulse shadow-lg"></div>
+                    </div>
+
+                    {/* Messages */}
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-white to-green-50/30">
+                        {messages.map((m) => (
+                            <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+                                <div className={`max-w-[75%] p-6 rounded-3xl shadow-lg whitespace-pre-wrap ${
+                                    m.role === 'user' 
+                                        ? `bg-gradient-to-r ${master.color} text-white rounded-br-none` 
+                                        : 'bg-white border-2 border-gray-200 text-gray-800 rounded-bl-none'
+                                }`}>
+                                    <p className={m.role === 'model' ? 'font-serif text-lg leading-relaxed' : 'leading-relaxed'}>
+                                        {m.parts[0].text}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                        {isStreaming && (
+                            <div className="flex justify-start">
+                                <div className="bg-white border-2 border-gray-200 p-4 rounded-3xl rounded-bl-none">
+                                    <div className="loader"></div>
+                                </div>
+                            </div>
+                        )}
+                        <div ref={messagesEndRef}></div>
+                    </div>
+
+                    {/* Input */}
+                    <form onSubmit={handleSend} className="p-6 bg-white border-t-2 border-gray-200 flex gap-3 items-center shadow-2xl">
+                        <input 
+                            type="text" 
+                            value={input} 
+                            onChange={(e) => setInput(e.target.value)} 
+                            placeholder="Posez votre question au maître..." 
+                            className="flex-1 px-6 py-5 border-2 border-gray-300 rounded-full focus:outline-none focus:ring-4 focus:ring-emerald-300 text-lg"
+                            disabled={isStreaming}
+                        />
+                        <button 
+                            type="submit" 
+                            disabled={isStreaming || !input.trim()} 
+                            className={`px-10 py-5 bg-gradient-to-r ${master.color} text-white rounded-full font-bold text-lg hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 transition-all shadow-xl`}
+                        >
+                            {isStreaming ? '...' : 'Envoyer'}
+                        </button>
+                    </form>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [selectedMaster, setSelectedMaster] = useState(null);
+            const [showWelcome, setShowWelcome] = useState(true);
+            const [apiKey, setApiKey] = useState(localStorage.getItem('GEMINI_API_KEY'));
+            const [filterPilier, setFilterPilier] = useState('Tous');
+
+            const handleSaveKey = () => {
+                const key = prompt("Entrez votre clé API Google Gemini :");
+                if (key) {
+                    localStorage.setItem('GEMINI_API_KEY', key);
+                    setApiKey(key);
+                }
+            };
+
+            if (!CLE_UNIVERSELLE && !apiKey) {
+                return (
+                    <div className="flex flex-col items-center justify-center min-h-screen p-4">
+                        <div className="bg-white p-10 rounded-3xl shadow-2xl max-w-md w-full text-center">
+                            <h1 className="text-4xl font-serif font-bold text-emerald-900 mb-4">🌱 Bienvenue</h1>
+                            <p className="text-gray-600 mb-6 text-lg">Pour accéder aux Maîtres du Végétal, une clé API Google Gemini (gratuite) est nécessaire.</p>
+                            <button onClick={handleSaveKey} className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold text-lg hover:from-emerald-700 hover:to-teal-700 transition shadow-lg">
+                                Entrer ma Clé API
+                            </button>
+                            <p className="text-xs text-gray-400 mt-4">Stockée uniquement sur votre appareil</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (selectedMaster) {
+                return <ChatInterface master={selectedMaster} onBack={() => setSelectedMaster(null)} />;
+            }
+
+            const filteredMasters = filterPilier === 'Tous' 
+                ? MASTERS 
+                : MASTERS.filter(m => m.piliers.some(p => p.includes(filterPilier)));
+
+            return (
+                <div className="min-h-screen p-8">
+                    {showWelcome && <WelcomeModal onClose={() => setShowWelcome(false)} />}
+
+                    {/* Header */}
+                    <div className="text-center mb-12 animate-fade-in">
+                        <h1 className="text-6xl font-serif font-bold text-white mb-4 drop-shadow-2xl">
+                            🌿 Les Maîtres du Végétal
+                        </h1>
+                        <p className="text-2xl text-white/95 font-serif italic drop-shadow-lg">
+                            Dialoguez avec les révolutionnaires de l'agriculture et de la botanique
+                        </p>
+                    </div>
+
+                    {/* Filtres par pilier */}
+                    <div className="max-w-7xl mx-auto mb-8 animate-fade-in">
+                        <div className="bg-white/95 backdrop-blur rounded-2xl p-6 shadow-2xl border-2 border-white">
+                            <h3 className="font-bold text-gray-700 mb-4 text-center text-lg">Filtrer par Pilier</h3>
+                            <div className="flex flex-wrap gap-2 justify-center">
+                                <button 
+                                    onClick={() => setFilterPilier('Tous')}
+                                    className={`px-4 py-2 rounded-full font-bold text-sm transition-all ${filterPilier === 'Tous' ? 'bg-emerald-600 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                >
+                                    Tous les Maîtres
+                                </button>
+                                {PILIERS.slice(0, 7).map((pilier, i) => (
+                                    <button 
+                                        key={i}
+                                        onClick={() => setFilterPilier(pilier.title)}
+                                        className={`px-4 py-2 rounded-full font-bold text-sm transition-all ${filterPilier === pilier.title ? 'bg-emerald-600 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                    >
+                                        {pilier.icon} {pilier.title}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Cartes des maîtres */}
+                    <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-in">
+                        {filteredMasters.map((master) => (
+                            <div 
+                                key={master.id}
+                                onClick={() => setSelectedMaster(master)}
+                                className="master-card bg-white rounded-3xl shadow-2xl overflow-hidden cursor-pointer"
+                            >
+                                <div className={`bg-gradient-to-br ${master.color} p-8 text-white text-center relative overflow-hidden`}>
+                                    <div className="absolute inset-0 opacity-10">
+                                        <div className="leaf-pattern h-full w-full"></div>
+                                    </div>
+                                    <div className="text-7xl mb-4 relative z-10">{master.icon}</div>
+                                    <h2 className="text-2xl font-serif font-bold mb-2 relative z-10">{master.name}</h2>
+                                    <p className="text-white/90 font-bold text-sm relative z-10">{master.title}</p>
+                                    <p className="text-white/75 text-xs mt-2 italic relative z-10">{master.subtitle}</p>
+                                </div>
+                                <div className="p-6">
+                                    <div className="mb-4">
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Piliers maîtrisés :</p>
+                                        <div className="flex flex-wrap gap-1">
+                                            {master.piliers.map((p, i) => (
+                                                <span key={i} className="text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full font-bold">{p}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <p className="text-gray-700 text-center mb-6 leading-relaxed font-serif">
+                                        {master.description}
+                                    </p>
+                                    <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Œuvres principales :</p>
+                                        <ul className="space-y-1">
+                                            {master.books.slice(0, 3).map((book, i) => (
+                                                <li key={i} className="text-xs text-gray-600">• {book}</li>
+                                            ))}
+                                            {master.books.length > 3 && (
+                                                <li className="text-xs text-gray-400 italic">+ {master.books.length - 3} autres...</li>
+                                            )}
+                                        </ul>
+                                    </div>
+                                    <button className={`w-full py-4 bg-gradient-to-r ${master.color} text-white rounded-2xl font-bold text-lg hover:scale-105 transition-all shadow-xl`}>
+                                        🗣️ Dialoguer
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Footer */}
+                    <footer className="text-center mt-16 text-white/70 text-sm">
+                        <p className="mb-2">© 2025 - Les Maîtres du Végétal - Révolution Verte · Propulsé par Google Gemini AI</p>
+                        <p className="text-xs italic">Une bibliothèque vivante pour repenser notre rapport au végétal</p>
+                        {!CLE_UNIVERSELLE && (
+                            <button onClick={handleSaveKey} className="text-xs mt-3 underline hover:text-white">
+                                Changer la Clé API
+                            </button>
+                        )}
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
