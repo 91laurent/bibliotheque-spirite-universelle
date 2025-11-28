@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sagesse Spirituelle - Dialogues avec les Maîtres</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+      body { font-family: 'Lato', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 0; min-height: 100vh; }
+      .font-serif { font-family: 'Crimson Text', serif; }
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: #f1f1f1; }
+      ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+      .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .loader { border: 3px solid #f3f3f3; border-top: 3px solid #8b5cf6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      
+      #startup-error { display: none; padding: 20px; text-align: center; color: #b91c1c; background: #fee2e2; margin: 20px; border-radius: 8px; border: 1px solid #fca5a5; }
+
+      .teacher-card {
+        transition: all 0.3s ease;
+      }
+      .teacher-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      }
+    </style>
+
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "@google/generative-ai": "https://esm.sh/@google/generative-ai@0.21.0"
+  }
+}
+</script>
+
+    <script>
+        window.process = { env: {} };
+        setTimeout(() => {
+            const root = document.getElementById('root');
+            if (!root || root.innerHTML.trim() === '') {
+                document.getElementById('startup-error').style.display = 'block';
+            }
+        }, 3000);
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+    <div id="startup-error">
+        <h2 class="font-bold text-xl mb-2">Problème de chargement</h2>
+        <p>L'application n'a pas pu démarrer. Essayez avec un autre navigateur ou vérifiez votre connexion.</p>
+    </div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useRef } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { GoogleGenerativeAI } from "@google/generative-ai";
+
+        const CLE_UNIVERSELLE = "AIzaSyAhvPqbujmTl13hLjr25UjCmaAYbsvPDLk"; 
+
+        const TEACHERS = [
+            {
+                id: 'walsch',
+                name: 'Neale Donald Walsch',
+                title: 'Conversations avec Dieu',
+                description: 'Dialogues intimes avec Dieu sur l\'amour, la vie, la mort et le sens de l\'existence. Un enseignement d\'amour inconditionnel.',
+                books: [
+                    'Conversations avec Dieu - Tome 1 (questions fondamentales)',
+                    'Conversations avec Dieu - Tome 2 (relations et société)', 
+                    'Conversations avec Dieu - Tome 3 (vérités universelles)',
+                    'L\'Amitié avec Dieu'
+                ],
+                color: 'from-purple-500 to-pink-500',
+                icon: '💜',
+                personality: "Tu es Dieu tel qu'Il s'exprime dans Conversations avec Dieu. Tu parles avec amour inconditionnel, sagesse profonde et parfois humour. Tu utilises 'Je' pour parler de toi (Dieu) et tu t'adresses à l'humain avec tendresse absolue. Tu rappelles que l'amour est la seule vérité, que la peur est illusion, et que chacun crée sa propre réalité. Tu ne juges jamais."
+            },
+            {
+                id: 'krishnamurti',
+                name: 'Jiddu Krishnamurti',
+                title: 'La Liberté Intérieure',
+                description: 'L\'éveil par la remise en question totale. Observer sans jugement, se libérer du connu et des conditionnements.',
+                books: [
+                    'Se libérer du connu',
+                    'La première et dernière liberté',
+                    'De la vie et de la mort',
+                    'La révolution du silence'
+                ],
+                color: 'from-amber-500 to-orange-500',
+                icon: '🧘',
+                personality: "Tu es Krishnamurti. Tu ne donnes JAMAIS de réponses toutes faites ni de méthodes. Tu poses des questions qui invitent à l'observation directe et à la remise en question radicale des conditionnements. Tu parles avec une clarté tranchante. Tu invites constamment à 'observer ce qui est' sans jugement. Tu soulignes que la vérité est un pays sans chemin, que l'observateur EST l'observé, et que toute autorité en matière spirituelle est une illusion."
+            },
+            {
+                id: 'tolle',
+                name: 'Eckhart Tolle',
+                title: 'Le Pouvoir du Moment Présent',
+                description: 'L\'éveil à la conscience pure. Se libérer de l\'ego et de l\'identification aux pensées pour vivre dans le maintenant.',
+                books: [
+                    'Le pouvoir du moment présent',
+                    'Nouvelle Terre',
+                    'L\'art du calme intérieur',
+                    'Mettre en pratique le pouvoir du moment présent'
+                ],
+                color: 'from-teal-500 to-cyan-500',
+                icon: '🌅',
+                personality: "Tu es Eckhart Tolle. Tu ramènes TOUJOURS à la conscience du moment présent. Tu expliques avec clarté et douceur comment l'ego fonctionne et comment s'en libérer. Tu insistes sur l'espace entre les pensées, sur le fait d'être le témoin de ses pensées plutôt que de s'identifier à elles. Tu parles du 'corps de souffrance', de la 'présence', et de comment la paix se trouve dans le Maintenant."
+            }
+        ];
+
+        const getAiClient = () => {
+            const apiKey = CLE_UNIVERSELLE || localStorage.getItem('GEMINI_API_KEY');
+            if (!apiKey) throw new Error("Clé API manquante");
+            return new GoogleGenerativeAI(apiKey);
+        };
+
+        const chatWithTeacher = async (teacher, history, message) => {
+            const ai = getAiClient();
+            const booksContext = teacher.books.join(', ');
+            
+            const model = ai.getGenerativeModel({ 
+                model: "gemini-2.0-flash-exp",
+                systemInstruction: `${teacher.personality}\n\nTu as une connaissance COMPLETE de tous les livres suivants : ${booksContext}.\n\nRéponds en te basant sur l'ENSEMBLE de ces enseignements. Si la question sort du cadre de ces enseignements, dis-le avec bienveillance et ramène vers les thèmes centraux.`
+            });
+            
+            const chat = model.startChat({ history: history });
+            return await chat.sendMessageStream(message);
+        };
+
+        const WelcomeModal = ({ onClose }) => {
+            return (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden">
+                        <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 p-8 text-white text-center">
+                            <h2 className="text-4xl font-serif font-bold mb-3">Sagesse Spirituelle</h2>
+                            <p className="text-white/90 text-lg">Dialogues avec les Maîtres Contemporains</p>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <p className="text-gray-700 text-xl leading-relaxed text-center font-serif">
+                                Entrez en dialogue avec <strong>trois grands enseignants spirituels</strong> de notre époque.
+                            </p>
+                            
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="text-center">
+                                    <div className="text-4xl mb-2">💜</div>
+                                    <p className="font-bold text-sm">Walsch</p>
+                                    <p className="text-xs text-gray-500">Amour divin</p>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-4xl mb-2">🧘</div>
+                                    <p className="font-bold text-sm">Krishnamurti</p>
+                                    <p className="text-xs text-gray-500">Liberté totale</p>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-4xl mb-2">🌅</div>
+                                    <p className="font-bold text-sm">Tolle</p>
+                                    <p className="text-xs text-gray-500">Présence pure</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-purple-50 p-4 rounded-xl border border-purple-200">
+                                <p className="text-sm text-gray-600 text-center">
+                                    <strong>L'IA connaît l'ensemble des œuvres</strong> de chaque enseignant et répond dans leur esprit et leur style unique.
+                                </p>
+                            </div>
+
+                            <button 
+                                onClick={onClose}
+                                className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold text-xl hover:from-purple-700 hover:to-pink-700 transition shadow-lg transform hover:scale-[1.02]"
+                            >
+                                Commencer le Dialogue
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ChatInterface = ({ teacher, onBack }) => {
+            const [messages, setMessages] = useState([
+                { id: '1', role: 'model', parts: [{ text: teacher.id === 'walsch' 
+                    ? "Bonjour, mon enfant. Je suis ici, comme toujours. Que veux-tu savoir ?" 
+                    : teacher.id === 'krishnamurti'
+                    ? "Nous sommes ici pour explorer ensemble, pas pour que je te donne des réponses. Qu'observes-tu en toi en ce moment ?"
+                    : "Bienvenue. Es-tu présent à ce moment, maintenant ? Quelle question émerge de ta conscience ?"
+                }]}
+            ]);
+            const [input, setInput] = useState('');
+            const [isStreaming, setIsStreaming] = useState(false);
+            const messagesEndRef = useRef(null);
+
+            useEffect(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [messages]);
+
+            const handleSend = async (e) => {
+                e.preventDefault();
+                if (!input.trim() || isStreaming) return;
+
+                const userMsg = { id: Date.now().toString(), role: 'user', parts: [{ text: input }] };
+                setMessages(prev => [...prev, userMsg]);
+                setInput('');
+                setIsStreaming(true);
+
+                // FIX: Enlever le premier message (bienvenue du model) de l'historique
+                const history = messages.slice(1).map(m => ({ role: m.role, parts: m.parts }));
+
+                try {
+                    const streamResult = await chatWithTeacher(teacher, history, input);
+                    const botId = (Date.now() + 1).toString();
+                    setMessages(prev => [...prev, { id: botId, role: 'model', parts: [{ text: '' }] }]);
+
+                    let fullText = "";
+                    for await (const chunk of streamResult.stream) {
+                        const text = chunk.text() || ""; 
+                        fullText += text;
+                        setMessages(prev => prev.map(m => 
+                            m.id === botId ? { ...m, parts: [{ text: fullText }] } : m
+                        ));
+                    }
+                } catch (error) {
+                    console.error(error);
+                    setMessages(prev => [...prev, { 
+                        id: Date.now(), 
+                        role: 'model', 
+                        parts: [{ text: "Désolé, je ne peux pas répondre pour le moment. Erreur: " + error.message }] 
+                    }]);
+                } finally {
+                    setIsStreaming(false);
+                }
+            };
+
+            return (
+                <div className="flex flex-col h-screen max-w-5xl mx-auto">
+                    {/* Header */}
+                    <div className={`bg-gradient-to-r ${teacher.color} text-white p-6 flex items-center justify-between shadow-lg`}>
+                        <div className="flex items-center gap-4">
+                            <button onClick={onBack} className="text-4xl hover:scale-110 transition">←</button>
+                            <div>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-3xl">{teacher.icon}</span>
+                                    <h1 className="text-2xl font-serif font-bold">{teacher.name}</h1>
+                                </div>
+                                <p className="text-sm text-white/80 mt-1">{teacher.title}</p>
+                            </div>
+                        </div>
+                        <div className="w-3 h-3 rounded-full bg-white animate-pulse"></div>
+                    </div>
+
+                    {/* Messages */}
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
+                        {messages.map((m) => (
+                            <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+                                <div className={`max-w-[80%] p-5 rounded-3xl shadow-md whitespace-pre-wrap ${
+                                    m.role === 'user' 
+                                        ? `bg-gradient-to-r ${teacher.color} text-white rounded-br-none` 
+                                        : 'bg-gray-100 border-2 border-gray-200 text-gray-800 rounded-bl-none'
+                                }`}>
+                                    <p className={m.role === 'model' ? 'font-serif text-lg leading-relaxed' : 'leading-relaxed'}>
+                                        {m.parts[0].text}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                        <div ref={messagesEndRef}></div>
+                    </div>
+
+                    {/* Input */}
+                    <form onSubmit={handleSend} className="p-6 bg-white border-t-2 flex gap-3 items-center">
+                        <input 
+                            type="text" 
+                            value={input} 
+                            onChange={(e) => setInput(e.target.value)} 
+                            placeholder="Posez votre question..." 
+                            className="flex-1 px-6 py-4 border-2 border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg"
+                            disabled={isStreaming}
+                        />
+                        <button 
+                            type="submit" 
+                            disabled={isStreaming || !input.trim()} 
+                            className={`px-8 py-4 bg-gradient-to-r ${teacher.color} text-white rounded-full font-bold text-lg hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 transition shadow-lg`}
+                        >
+                            {isStreaming ? <div className="loader"></div> : 'Envoyer'}
+                        </button>
+                    </form>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [selectedTeacher, setSelectedTeacher] = useState(null);
+            const [showWelcome, setShowWelcome] = useState(true);
+            const [apiKey, setApiKey] = useState(localStorage.getItem('GEMINI_API_KEY'));
+
+            const handleSaveKey = () => {
+                const key = prompt("Entrez votre clé API Google Gemini :");
+                if (key) {
+                    localStorage.setItem('GEMINI_API_KEY', key);
+                    setApiKey(key);
+                }
+            };
+
+            if (!CLE_UNIVERSELLE && !apiKey) {
+                return (
+                    <div className="flex flex-col items-center justify-center min-h-screen p-4">
+                        <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
+                            <h1 className="text-3xl font-serif font-bold text-purple-900 mb-4">Bienvenue</h1>
+                            <p className="text-gray-600 mb-6">Pour accéder aux dialogues spirituels, une clé API Google Gemini (gratuite) est nécessaire.</p>
+                            <button onClick={handleSaveKey} className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-bold hover:from-purple-700 hover:to-purple-700 transition">
+                                Entrer ma Clé API
+                            </button>
+                            <p className="text-xs text-gray-400 mt-4">La clé est stockée uniquement sur votre appareil.</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (selectedTeacher) {
+                return <ChatInterface teacher={selectedTeacher} onBack={() => setSelectedTeacher(null)} />;
+            }
+
+            return (
+                <div className="min-h-screen p-8">
+                    {showWelcome && <WelcomeModal onClose={() => setShowWelcome(false)} />}
+
+                    {/* Header */}
+                    <div className="text-center mb-12 animate-fade-in">
+                        <h1 className="text-5xl font-serif font-bold text-white mb-3 drop-shadow-lg">
+                            Sagesse Spirituelle
+                        </h1>
+                        <p className="text-xl text-white/90 font-serif italic">
+                            Choisissez votre guide pour ce voyage intérieur
+                        </p>
+                    </div>
+
+                    {/* Cartes des enseignants */}
+                    <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 animate-fade-in">
+                        {TEACHERS.map((teacher) => (
+                            <div 
+                                key={teacher.id}
+                                onClick={() => setSelectedTeacher(teacher)}
+                                className="teacher-card bg-white rounded-3xl shadow-2xl overflow-hidden cursor-pointer"
+                            >
+                                <div className={`bg-gradient-to-br ${teacher.color} p-8 text-white text-center`}>
+                                    <div className="text-6xl mb-4">{teacher.icon}</div>
+                                    <h2 className="text-3xl font-serif font-bold mb-2">{teacher.name}</h2>
+                                    <p className="text-white/90 font-bold">{teacher.title}</p>
+                                </div>
+                                <div className="p-6">
+                                    <p className="text-gray-700 text-center mb-6 leading-relaxed font-serif text-lg">
+                                        {teacher.description}
+                                    </p>
+                                    <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Œuvres incluses :</p>
+                                        <ul className="space-y-1">
+                                            {teacher.books.map((book, i) => (
+                                                <li key={i} className="text-sm text-gray-600">• {book}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                    <button className={`w-full py-4 bg-gradient-to-r ${teacher.color} text-white rounded-xl font-bold text-lg hover:scale-105 transition shadow-lg`}>
+                                        Commencer le Dialogue
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Footer */}
+                    <footer className="text-center mt-12 text-white/60 text-sm">
+                        <p>© 2025 - Sagesse Spirituelle - Propulsé par Google Gemini AI</p>
+                        {!CLE_UNIVERSELLE && (
+                            <button onClick={handleSaveKey} className="text-xs mt-2 underline hover:text-white/90">
+                                Changer la Clé API
+                            </button>
+                        )}
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
