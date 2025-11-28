@@ -130,7 +130,7 @@
             const booksContext = teacher.books.join(', ');
             
             const model = ai.getGenerativeModel({ 
-                model: "gemini-2.0-flash-exp",
+                model: "gemini-1.5-flash",
                 systemInstruction: `${teacher.personality}\n\nTu as une connaissance COMPLETE de tous les livres suivants : ${booksContext}.\n\nRéponds en te basant sur l'ENSEMBLE de ces enseignements. Si la question sort du cadre de ces enseignements, dis-le avec bienveillance et ramène vers les thèmes centraux.`
             });
             
