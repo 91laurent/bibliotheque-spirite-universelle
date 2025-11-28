@@ -246,8 +246,8 @@
             const booksContext = master.books.join(', ');
             const piliersContext = master.piliers.join(', ');
             
-            const model = ai.getGenerativeModel({ 
-                model: "gemini-2.0-flash-exp",
+            const model = ai.getGenerativeModel({
+                model: "gemini-2.5-flash",
                 systemInstruction: `${master.personality}\n\nTu maîtrises parfaitement les ouvrages suivants : ${booksContext}.\nTu es expert des piliers : ${piliersContext}.\n\nRéponds en te basant sur tes travaux et ton expérience. Sois pédagogue, concret et n'hésite pas à donner des exemples précis ou des anecdotes de recherche. Si la question sort de ton domaine, oriente vers un autre maître (Mancuso pour la biologie, Bourguignon pour le sol, Fukuoka pour le non-agir, etc.).`
             });
             
