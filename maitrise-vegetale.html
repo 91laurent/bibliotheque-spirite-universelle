@@ -98,9 +98,10 @@
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect, useRef } from 'react';
         import { createRoot } from 'react-dom/client';
-        // import { GoogleGenerativeAI } from "@google/generative-ai";
+        import { GoogleGenerativeAI } from "@google/generative-ai";
 
-        const WORKER_URL = "https://bibliotheque-spirite-api.laurent91210.workers.dev/"; 
+        // Clé API Google Gemini - À remplacer si bloquée
+        const API_KEY = "AIzaSyDIC6gK7RCR0o4gR0B1cPl0EYIeE5QvKCs"; 
 
         const MASTERS = [
             {
@@ -237,81 +238,17 @@
         ];
 
         const chatWithMaster = async (master, history, message) => {
+            const ai = new GoogleGenerativeAI(API_KEY);
             const booksContext = master.books.join(', ');
             const piliersContext = master.piliers.join(', ');
 
-            const systemInstruction = `${master.personality}\n\nTu maîtrises parfaitement les ouvrages suivants : ${booksContext}.\nTu es expert des piliers : ${piliersContext}.\n\nRéponds en te basant sur tes travaux et ton expérience. Sois pédagogue, concret et n'hésite pas à donner des exemples précis ou des anecdotes de recherche. Si la question sort de ton domaine, oriente vers un autre maître (Mancuso pour la biologie, Bourguignon pour le sol, Fukuoka pour le non-agir, etc.).`;
-
-            console.log('[DEBUG] Envoi requête au Worker:', { model: "gemini-1.5-flash", history, message });
-
-            const response = await fetch(WORKER_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: "gemini-1.5-flash",
-                    history,
-                    message,
-                    systemInstruction
-                })
+            const model = ai.getGenerativeModel({
+                model: "gemini-1.5-flash",
+                systemInstruction: `${master.personality}\n\nTu maîtrises parfaitement les ouvrages suivants : ${booksContext}.\nTu es expert des piliers : ${piliersContext}.\n\nRéponds en te basant sur tes travaux et ton expérience. Sois pédagogue, concret et n'hésite pas à donner des exemples précis ou des anecdotes de recherche. Si la question sort de ton domaine, oriente vers un autre maître (Mancuso pour la biologie, Bourguignon pour le sol, Fukuoka pour le non-agir, etc.).`
             });
 
-            console.log('[DEBUG] Réponse reçue:', response.status, response.headers.get('content-type'));
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('[DEBUG] Erreur HTTP:', response.status, errorText);
-                throw new Error(`HTTP ${response.status}: ${errorText}`);
-            }
-
-            // Parser le streaming SSE
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-
-            return {
-                stream: {
-                    async *[Symbol.asyncIterator]() {
-                        let buffer = '';
-                        let chunkCount = 0;
-                        while (true) {
-                            const { done, value } = await reader.read();
-                            if (done) {
-                                console.log('[DEBUG] Stream terminé, chunks reçus:', chunkCount);
-                                break;
-                            }
-
-                            const decoded = decoder.decode(value, { stream: true });
-                            console.log('[DEBUG] Chunk brut reçu:', decoded.substring(0, 200));
-                            buffer += decoded;
-                            const lines = buffer.split('\n');
-                            buffer = lines.pop() || '';
-
-                            for (const line of lines) {
-                                if (line.startsWith('data: ')) {
-                                    try {
-                                        const jsonStr = line.slice(6);
-                                        console.log('[DEBUG] Parsing JSON:', jsonStr.substring(0, 100));
-                                        const data = JSON.parse(jsonStr);
-                                        const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                                        if (textContent) {
-                                            chunkCount++;
-                                            console.log('[DEBUG] Text extrait:', textContent);
-                                            yield {
-                                                text: () => textContent
-                                            };
-                                        } else {
-                                            console.log('[DEBUG] Pas de texte dans:', data);
-                                        }
-                                    } catch (e) {
-                                        console.error('[DEBUG] Erreur parsing:', e, 'Ligne:', line);
-                                    }
-                                } else if (line.trim()) {
-                                    console.log('[DEBUG] Ligne non-data ignorée:', line);
-                                }
-                            }
-                        }
-                    }
-                }
-            };
+            const chat = model.startChat({ history: history });
+            return await chat.sendMessageStream(message);
         };
 
         const WelcomeModal = ({ onClose }) => {
